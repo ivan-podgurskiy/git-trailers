@@ -1,8 +1,9 @@
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
+import ts from "typescript";
 
 const MAX_UNPACKED_SIZE = 42_445;
 const expectedFiles = [
@@ -34,8 +35,8 @@ const expectedDeclarationExports = [
   ...expectedRuntimeExports,
 ];
 
-verifyPackageExports();
-await verifyBuildOutputs();
+const errors = verifyPackageExports();
+errors.push(...(await verifyBuildOutputs()));
 
 const cache = mkdtempSync(join(tmpdir(), "git-trailers-pack-"));
 let output;
@@ -76,7 +77,7 @@ const prohibited = actualFiles.filter((path) =>
 );
 
 if (duplicates.length > 0 || missing.length > 0 || extra.length > 0) {
-  throw new Error(
+  errors.push(
     [
       "Unexpected package contents.",
       `Expected: ${expectedFiles.join(", ")}`,
@@ -91,15 +92,19 @@ if (duplicates.length > 0 || missing.length > 0 || extra.length > 0) {
 }
 
 if (prohibited.length > 0) {
-  throw new Error(
+  errors.push(
     `Package contains prohibited source, test, or meta-document files: ${prohibited.join(", ")}`,
   );
 }
 
 if (manifest.unpackedSize > MAX_UNPACKED_SIZE) {
-  throw new Error(
+  errors.push(
     `Package unpacked size exceeds ${MAX_UNPACKED_SIZE} bytes: ${manifest.unpackedSize} bytes.`,
   );
+}
+
+if (errors.length > 0) {
+  throw new Error(errors.join("\n\n"));
 }
 
 console.log(
@@ -111,6 +116,7 @@ console.log(
 
 function verifyPackageExports() {
   const packageJson = JSON.parse(readFileSync("package.json", "utf8"));
+  const errors = [];
   const expectedMetadata = {
     main: "./dist/index.cjs",
     module: "./dist/index.js",
@@ -119,49 +125,200 @@ function verifyPackageExports() {
 
   for (const [key, value] of Object.entries(expectedMetadata)) {
     if (packageJson[key] !== value) {
-      throw new Error(`package.json ${key} must be ${value}.`);
+      errors.push(`package.json ${key} must be ${value}.`);
     }
   }
 
   const rootExport = packageJson.exports?.["."];
-  if (
-    rootExport?.types !== "./dist/index.d.ts" ||
-    rootExport?.import !== "./dist/index.js" ||
-    rootExport?.require !== "./dist/index.cjs"
-  ) {
-    throw new Error(
-      "package.json exports must map types, import, and require to dist/index outputs.",
+  const expectedConditions = {
+    import: {
+      types: "./dist/index.d.ts",
+      default: "./dist/index.js",
+    },
+    require: {
+      types: "./dist/index.d.cts",
+      default: "./dist/index.cjs",
+    },
+  };
+
+  if (rootExport?.types !== undefined) {
+    errors.push(
+      'package.json exports["."] must not have a top-level types condition because it preempts import and require declaration resolution.',
     );
   }
+  for (const [condition, expected] of Object.entries(expectedConditions)) {
+    const actual = rootExport?.[condition];
+    if (
+      actual?.types !== expected.types ||
+      actual?.default !== expected.default ||
+      Object.keys(actual ?? {}).length !== 2
+    ) {
+      errors.push(
+        `package.json exports[\".\"].${condition} must be ${JSON.stringify(expected)}.`,
+      );
+    }
+  }
+
+  return errors;
 }
 
 async function verifyBuildOutputs() {
-  const esm = await import("../dist/index.js");
+  const errors = [];
+  const esm = await import("git-trailers");
   const require = createRequire(import.meta.url);
-  const commonJs = require("../dist/index.cjs");
+  const commonJs = require("git-trailers");
   const esmExports = Object.keys(esm).sort();
   const commonJsExports = Object.keys(commonJs).sort();
 
   if (JSON.stringify(esmExports) !== JSON.stringify(expectedRuntimeExports)) {
-    throw new Error(`Unexpected ESM exports: ${esmExports.join(", ")}`);
+    errors.push(`Unexpected ESM exports: ${esmExports.join(", ")}`);
   }
   if (
     JSON.stringify(commonJsExports) !== JSON.stringify(expectedRuntimeExports)
   ) {
-    throw new Error(
-      `Unexpected CommonJS exports: ${commonJsExports.join(", ")}`,
+    errors.push(`Unexpected CommonJS exports: ${commonJsExports.join(", ")}`);
+  }
+
+  errors.push(...verifyDeclarationExports());
+  errors.push(...verifyTypeScriptConsumerResolution());
+  return errors;
+}
+
+function verifyDeclarationExports() {
+  const errors = [];
+  const declarationFiles = [
+    resolve("dist/index.d.ts"),
+    resolve("dist/index.d.cts"),
+  ];
+  const program = ts.createProgram({
+    rootNames: declarationFiles,
+    options: {
+      module: ts.ModuleKind.NodeNext,
+      moduleResolution: ts.ModuleResolutionKind.NodeNext,
+      noEmit: true,
+      strict: true,
+    },
+  });
+  const diagnostics = ts.getPreEmitDiagnostics(program);
+
+  if (diagnostics.length > 0) {
+    errors.push(
+      `Declaration diagnostics:\n${ts.formatDiagnosticsWithColorAndContext(diagnostics, diagnosticHost())}`,
     );
   }
 
-  for (const file of ["dist/index.d.ts", "dist/index.d.cts"]) {
-    const declaration = readFileSync(file, "utf8");
+  const checker = program.getTypeChecker();
+  for (const declarationFile of declarationFiles) {
+    const sourceFile = program.getSourceFile(declarationFile);
+    const moduleSymbol = sourceFile && checker.getSymbolAtLocation(sourceFile);
+    if (moduleSymbol === undefined) {
+      errors.push(
+        `${declarationFile} does not have a declaration module symbol.`,
+      );
+      continue;
+    }
+    const actual = checker
+      .getExportsOfModule(moduleSymbol)
+      .map((symbol) => symbol.getName())
+      .sort();
     const missing = expectedDeclarationExports.filter(
-      (name) => !new RegExp(`\\b${name}\\b`).test(declaration),
+      (name) => !actual.includes(name),
     );
-    if (missing.length > 0) {
-      throw new Error(
-        `${file} is missing declarations for ${missing.join(", ")}.`,
+    const unexpected = actual.filter(
+      (name) => !expectedDeclarationExports.includes(name),
+    );
+    if (missing.length > 0 || unexpected.length > 0) {
+      errors.push(
+        `${declarationFile} exports mismatch; missing: ${missing.join(", ") || "none"}; unexpected: ${unexpected.join(", ") || "none"}.`,
       );
     }
   }
+
+  return errors;
+}
+
+function verifyTypeScriptConsumerResolution() {
+  const errors = [];
+  const consumerDirectory = mkdtempSync(
+    join(process.cwd(), ".git-trailers-package-consumer-"),
+  );
+  const consumers = [
+    {
+      kind: "ESM",
+      file: join(consumerDirectory, "consumer.mts"),
+      expectedDeclaration: resolve("dist/index.d.ts"),
+    },
+    {
+      kind: "CommonJS",
+      file: join(consumerDirectory, "consumer.cts"),
+      expectedDeclaration: resolve("dist/index.d.cts"),
+    },
+  ];
+  const compilerOptions = {
+    module: ts.ModuleKind.NodeNext,
+    moduleResolution: ts.ModuleResolutionKind.NodeNext,
+    noEmit: true,
+    strict: true,
+    target: ts.ScriptTarget.ES2022,
+  };
+
+  try {
+    for (const consumer of consumers) {
+      writeFileSync(
+        consumer.file,
+        'import { parseTrailers } from "git-trailers";\nconst result = parseTrailers("subject");\nresult.trailers;\n',
+      );
+    }
+
+    const program = ts.createProgram({
+      rootNames: consumers.map((consumer) => consumer.file),
+      options: compilerOptions,
+    });
+    const diagnostics = ts.getPreEmitDiagnostics(program);
+    if (diagnostics.length > 0) {
+      errors.push(
+        `TypeScript consumer diagnostics:\n${ts.formatDiagnosticsWithColorAndContext(diagnostics, diagnosticHost())}`,
+      );
+    }
+
+    for (const consumer of consumers) {
+      const sourceFile = program.getSourceFile(consumer.file);
+      const importDeclaration = sourceFile?.statements.find(
+        ts.isImportDeclaration,
+      );
+      const moduleSpecifier = importDeclaration?.moduleSpecifier;
+      const resolution =
+        sourceFile !== undefined && moduleSpecifier !== undefined
+          ? program.getResolvedModuleFromModuleSpecifier(
+              moduleSpecifier,
+              sourceFile,
+            )?.resolvedModule
+          : undefined;
+      if (resolution === undefined) {
+        errors.push(
+          `${consumer.kind} consumer could not resolve git-trailers.`,
+        );
+      } else if (resolution.resolvedFileName !== consumer.expectedDeclaration) {
+        errors.push(
+          `${consumer.kind} consumer resolved ${resolution.resolvedFileName}; expected ${consumer.expectedDeclaration}.`,
+        );
+      } else {
+        console.log(
+          `${consumer.kind} TypeScript consumer resolved ${resolution.resolvedFileName}.`,
+        );
+      }
+    }
+  } finally {
+    rmSync(consumerDirectory, { recursive: true, force: true });
+  }
+
+  return errors;
+}
+
+function diagnosticHost() {
+  return {
+    getCanonicalFileName: (fileName) => fileName,
+    getCurrentDirectory: () => process.cwd(),
+    getNewLine: () => "\n",
+  };
 }
