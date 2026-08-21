@@ -1,0 +1,9 @@
+.worktrees/
+.superpowers/
+.agent-work/
+git-trailers-prd.md
+node_modules/
+dist/
+coverage/
+*.tgz
+.DS_Store

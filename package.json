@@ -1,0 +1,66 @@
+{
+  "name": "git-trailers",
+  "version": "1.0.0",
+  "description": "Parse, serialize, and manipulate Git commit message trailers in JavaScript and TypeScript.",
+  "author": "Ivan Podgurskiy",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ivan-podgurskiy/git-trailers.git"
+  },
+  "homepage": "https://github.com/ivan-podgurskiy/git-trailers#readme",
+  "bugs": {
+    "url": "https://github.com/ivan-podgurskiy/git-trailers/issues"
+  },
+  "sideEffects": false,
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "CHANGELOG.md",
+    "THIRD_PARTY_NOTICES.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts --clean --minify",
+    "conformance:check": "node scripts/check-conformance-hash.mjs",
+    "differential": "node scripts/differential.mjs",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "pack:check": "npm run build && node scripts/check-package.mjs",
+    "prepack": "npm run build",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "git",
+    "trailers",
+    "git-trailers",
+    "commit",
+    "commit-message",
+    "parser",
+    "javascript",
+    "typescript"
+  ],
+  "devDependencies": {
+    "fast-check": "^4.9.0",
+    "prettier": "^3.9.6",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.11"
+  },
+  "overrides": {
+    "esbuild": "^0.28.1"
+  }
+}
