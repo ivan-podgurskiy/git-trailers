@@ -1,0 +1,80 @@
+import { describe, expect, it } from "vitest";
+
+import { parseTrailers } from "../src/index.js";
+
+describe("parseTrailers", () => {
+  it("returns all post-subject content as body when no block is found", () => {
+    expect(parseTrailers("subject\n\nbody")).toMatchObject({
+      subject: "subject",
+      body: "\nbody",
+      trailers: [],
+      blockStart: -1,
+      hasDivider: false,
+    });
+  });
+
+  it("parses a signed-off-by trailer", () => {
+    expect(
+      parseTrailers("subject\n\nSigned-off-by: Alice <a@example.com>\n"),
+    ).toEqual({
+      subject: "subject",
+      body: "",
+      trailers: [
+        {
+          key: "Signed-off-by",
+          value: "Alice <a@example.com>",
+          raw: "Signed-off-by: Alice <a@example.com>\n",
+          separator: ":",
+        },
+      ],
+      blockStart: 2,
+      hasDivider: false,
+    });
+  });
+
+  it("unfolds continuation lines by default while retaining their raw text", () => {
+    expect(parseTrailers("s\n\nKey: one\n  two\n")).toMatchObject({
+      trailers: [
+        {
+          key: "Key",
+          value: "one two",
+          raw: "Key: one\n  two\n",
+          separator: ":",
+        },
+      ],
+    });
+  });
+
+  it("accepts a block at the built-in recognized-prefix 25 percent boundary", () => {
+    expect(
+      parseTrailers(
+        "s\n\nSigned-off-by: A\nnot trailer\nnot trailer\nnot trailer\n",
+      ),
+    ).toHaveProperty("trailers.length", 1);
+  });
+
+  it("keeps body as the contiguous pre-block region for a 25 percent candidate", () => {
+    expect(
+      parseTrailers(
+        "s\n\nSigned-off-by: A\nnot trailer\nnot trailer\nnot trailer\n",
+      ),
+    ).toMatchObject({ body: "", blockStart: 2 });
+  });
+
+  it("uses a configured known key for the 25 percent boundary", () => {
+    expect(
+      parseTrailers("s\n\nKnown: A\nnot trailer\nnot trailer\nnot trailer\n", {
+        knownKeys: ["Known"],
+      }),
+    ).toHaveProperty("trailers.length", 1);
+  });
+
+  it("ends a trailer block at a divider before a patch", () => {
+    expect(
+      parseTrailers("s\n\nKey: v\n---\ndiff --git a/a b/a\n"),
+    ).toMatchObject({
+      hasDivider: true,
+      blockStart: 2,
+    });
+  });
+});
