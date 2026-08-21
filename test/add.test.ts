@@ -32,6 +32,15 @@ describe("addTrailers", () => {
     expect(addTrailers(base, [{ key: "Fixes", value: "two" }])).toBe(base);
   });
 
+  it("uses the leading trailer as the duplicate neighbor for start insertion", () => {
+    const message = "subject\n\nFixes: one\nReviewed-by: A\n";
+    expect(
+      addTrailers(message, [{ key: "Fixes", value: "one" }], {
+        where: "start",
+      }),
+    ).toBe(message);
+  });
+
   it("uses the trailer after a before insertion as its duplicate neighbor", () => {
     const message = "subject\n\nReviewed-by: A\nFixes: two\n";
     expect(
@@ -158,6 +167,25 @@ describe("addTrailers", () => {
         ifExists: "replace",
       }),
     ).toBe("subject\n\nFixesa two\n");
+  });
+
+  it("uses the first repeated overlapping separator for canonical trailer records", () => {
+    expect(
+      addTrailers(
+        "subject\n\nSigned-off-by: A\n",
+        [{ key: "Signed", value: "B" }],
+        { separators: "-:", ifExists: "add" },
+      ),
+    ).toBe("subject\n\nSigned- off-by: A\nSigned- B\n");
+  });
+
+  it("recognizes a folded overlapping-separator trailer without appending a block", () => {
+    const message = "subject\n\nFixes- one\n  continued\n";
+    expect(
+      addTrailers(message, [{ key: "Fixes", value: "one continued" }], {
+        separators: "-:",
+      }),
+    ).toBe(message);
   });
 
   it("retains folded trailers and internal non-trailer records", () => {

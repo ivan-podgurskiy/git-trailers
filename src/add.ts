@@ -253,7 +253,12 @@ function applyOne(
 
   let index = insertionIndex(items, trailer.key, options.where);
   if (matching.length > 0 && options.ifExists === "addIfDifferentNeighbor") {
-    const neighbor = items[options.where === "before" ? index : index - 1];
+    const neighbor =
+      items[
+        options.where === "before" || options.where === "start"
+          ? index
+          : index - 1
+      ];
     if (
       neighbor?.kind === "trailer" &&
       sameToken(neighbor.key, trailer.key) &&
@@ -332,7 +337,10 @@ function parseTrailerLine(
 
   let overlappingSeparator = -1;
   for (let position = 1; position < index; position += 1) {
-    if (separators.includes(line[position]!)) overlappingSeparator = position;
+    if (separators.includes(line[position]!)) {
+      overlappingSeparator = position;
+      break;
+    }
   }
   if (overlappingSeparator !== -1) {
     return {
@@ -364,6 +372,7 @@ function findOverlappingSeparatorBlockStart(
     if (line.end > end) continue;
     if (isBlank(line.content)) return trailers > 0 ? index + 1 : -1;
     if (line.content.startsWith("#")) continue;
+    if (/^[ \t]/.test(line.content)) continue;
     if (parseTrailerLine(line.content, separators) === undefined) return -1;
     trailers += 1;
   }
