@@ -69,13 +69,23 @@ export function addTrailers(
     divider: normalized.divider,
     unfold: false,
   });
-  const hasBlock = parsed.blockStart !== -1;
   const suffixStart = effectiveEnd(lines, normalized.divider);
-  const blockStart = hasBlock ? lines[parsed.blockStart]!.start : suffixStart;
+  const fallbackBlockStart =
+    parsed.blockStart === -1
+      ? findOverlappingSeparatorBlockStart(
+          lines,
+          suffixStart,
+          normalized.separators,
+        )
+      : -1;
+  const trailerBlockStart =
+    parsed.blockStart === -1 ? fallbackBlockStart : parsed.blockStart;
+  const hasBlock = trailerBlockStart !== -1;
+  const blockStart = hasBlock ? lines[trailerBlockStart]!.start : suffixStart;
   let items = hasBlock
     ? parseBlockItems(
         lines,
-        parsed.blockStart,
+        trailerBlockStart,
         suffixStart,
         normalized.separators,
       )
@@ -319,12 +329,45 @@ function parseTrailerLine(
   if (!/[A-Za-z0-9-]/.test(line[0] ?? "")) return undefined;
   let index = 0;
   while (/[A-Za-z0-9-]/.test(line[index] ?? "")) index += 1;
+
+  let overlappingSeparator = -1;
+  for (let position = 1; position < index; position += 1) {
+    if (separators.includes(line[position]!)) overlappingSeparator = position;
+  }
+  if (overlappingSeparator !== -1) {
+    return {
+      key: line.slice(0, overlappingSeparator),
+      value: trimHorizontal(line.slice(overlappingSeparator + 1)),
+    };
+  }
+
   while (line[index] === " " || line[index] === "\t") index += 1;
   if (!separators.includes(line[index] ?? "")) return undefined;
   return {
     key: trimHorizontal(line.slice(0, index)),
     value: trimHorizontal(line.slice(index + 1)),
   };
+}
+
+function findOverlappingSeparatorBlockStart(
+  lines: PhysicalLine[],
+  end: number,
+  separators: string,
+): number {
+  if (![...separators].some((separator) => /[A-Za-z0-9-]/.test(separator))) {
+    return -1;
+  }
+
+  let trailers = 0;
+  for (let index = lines.length - 1; index >= 0; index -= 1) {
+    const line = lines[index]!;
+    if (line.end > end) continue;
+    if (isBlank(line.content)) return trailers > 0 ? index + 1 : -1;
+    if (line.content.startsWith("#")) continue;
+    if (parseTrailerLine(line.content, separators) === undefined) return -1;
+    trailers += 1;
+  }
+  return -1;
 }
 
 function serializeBlock(

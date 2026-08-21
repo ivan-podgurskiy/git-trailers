@@ -142,6 +142,24 @@ describe("addTrailers", () => {
     ).toBe("subject\r\n\r\nFixes: one\r\nReviewed-by: A\r\n");
   });
 
+  it("recognizes an overlapping hyphen separator for replacement and canonicalization", () => {
+    expect(
+      addTrailers("subject\n\nFixes- one\n", [{ key: "fixes", value: "two" }], {
+        separators: "-:",
+        ifExists: "replace",
+      }),
+    ).toBe("subject\n\nfixes- two\n");
+  });
+
+  it("recognizes an alphanumeric configured separator", () => {
+    expect(
+      addTrailers("subject\n\nFixesa one\n", [{ key: "Fixes", value: "two" }], {
+        separators: "a:",
+        ifExists: "replace",
+      }),
+    ).toBe("subject\n\nFixesa two\n");
+  });
+
   it("retains folded trailers and internal non-trailer records", () => {
     expect(
       addTrailers(
