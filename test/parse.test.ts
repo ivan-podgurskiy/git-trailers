@@ -77,4 +77,23 @@ describe("parseTrailers", () => {
       blockStart: 2,
     });
   });
+
+  it("ignores an internal default comment while detecting an all-trailer block", () => {
+    expect(parseTrailers("s\n\nKey: one\n# note\nOther: two\n")).toMatchObject({
+      blockStart: 2,
+      trailers: [
+        { key: "Key", value: "one", raw: "Key: one\n" },
+        { key: "Other", value: "two", raw: "Other: two\n" },
+      ],
+    });
+  });
+
+  it("rejects an unrecognized block with a leading orphan continuation", () => {
+    expect(
+      parseTrailers("s\n\n  orphan continuation\nKey: value\n"),
+    ).toMatchObject({
+      blockStart: -1,
+      trailers: [],
+    });
+  });
 });

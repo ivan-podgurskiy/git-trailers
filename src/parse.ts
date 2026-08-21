@@ -150,6 +150,8 @@ function findTrailerBlockStart(
   for (let index = endIndex; index >= 0; index -= 1) {
     const line = lines[index]!;
     if (isBlank(line.content)) {
+      nonTrailerLines += possibleContinuationLines;
+      possibleContinuationLines = 0;
       const start = index + 1;
       const accepted =
         trailerLines > 0 &&
@@ -157,6 +159,8 @@ function findTrailerBlockStart(
           (recognizedPrefix && trailerLines * 3 >= nonTrailerLines));
       return accepted ? start : -1;
     }
+
+    if (isComment(line.content)) continue;
 
     const separator = findSeparator(line.content, separators);
     if (separator !== -1) {
