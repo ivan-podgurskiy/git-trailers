@@ -19,14 +19,16 @@ jobs:
     env:
       GIT_TAG: v2.54.0
       GIT_VERSION: 2.54.0
-      GIT_TRAILERS_GIT: ${{ runner.temp }}/git-trailers-git/v2.54.0/bin/git
-      GIT_SOURCE_DIR: ${{ runner.temp }}/git-trailers-git/source-v2.54.0
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version: 24
           registry-url: https://registry.npmjs.org
+      - name: Set Git paths
+        run: |
+          printf 'GIT_SOURCE_DIR=%s\n' "$RUNNER_TEMP/git-trailers-git/source-v2.54.0" >> "$GITHUB_ENV"
+          printf 'GIT_TRAILERS_GIT=%s\n' "$RUNNER_TEMP/git-trailers-git/v2.54.0/bin/git" >> "$GITHUB_ENV"
       - run: npm ci
       - run: npm test
       - run: npm run conformance:check
@@ -36,13 +38,13 @@ jobs:
       - run: npm run pack:check
       - name: Build Git 2.54.0 for differential checks
         run: |
+          mkdir -p "$(dirname "$GIT_SOURCE_DIR")" "$(dirname "$GIT_TRAILERS_GIT")"
           git clone --depth 1 --branch "$GIT_TAG" https://github.com/git/git.git "$GIT_SOURCE_DIR"
           test "$(git -C "$GIT_SOURCE_DIR" describe --tags --exact-match HEAD)" = "$GIT_TAG"
           (
             cd "$GIT_SOURCE_DIR"
             make -j2 NO_TCLTK=YesPlease
           )
-          mkdir -p "$(dirname "$GIT_TRAILERS_GIT")"
           cp "$GIT_SOURCE_DIR/git" "$GIT_TRAILERS_GIT"
           chmod +x "$GIT_TRAILERS_GIT"
           test "$("$GIT_TRAILERS_GIT" --version)" = "git version $GIT_VERSION"
