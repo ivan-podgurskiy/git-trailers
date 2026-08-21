@@ -124,6 +124,10 @@ describe("addTrailers", () => {
     );
   });
 
+  it("creates a parseable trailer block for an empty message", () => {
+    expect(addTrailers("", [{ key: "a", value: "" }])).toBe("\na: \n");
+  });
+
   it("places start at the beginning of the block, not the first matching key", () => {
     expect(
       addTrailers(

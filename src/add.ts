@@ -428,7 +428,7 @@ function serializeBlock(
 function prepareNewBlockPrefix(prefix: string, newline: string): string {
   if (prefix.endsWith(`${newline}${newline}`)) return prefix;
   if (prefix.endsWith(newline)) return `${prefix}${newline}`;
-  return prefix === "" ? "" : `${prefix}${newline}${newline}`;
+  return prefix === "" ? newline : `${prefix}${newline}${newline}`;
 }
 
 function effectiveEnd(lines: PhysicalLine[], divider: boolean): number {

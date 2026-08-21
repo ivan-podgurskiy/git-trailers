@@ -69,6 +69,43 @@ describe("parseTrailers", () => {
     ).toHaveProperty("trailers.length", 1);
   });
 
+  it("accepts a cherry-pick recognized block without returning the prefix", () => {
+    expect(
+      parseTrailers(
+        "s\n\n(cherry picked from commit abcdef)\none\ntwo\nthree\n",
+      ),
+    ).toMatchObject({
+      trailers: [],
+      body: "",
+      blockStart: 2,
+    });
+  });
+
+  it("counts a folded trailer atomically for the 25 percent rule", () => {
+    expect(
+      parseTrailers("s\n\nKnown: A\n  folded\none\ntwo\nthree\nfour\n", {
+        knownKeys: ["Known"],
+      }),
+    ).toMatchObject({
+      trailers: [],
+      blockStart: -1,
+    });
+  });
+
+  it("uses the first configured separator when it overlaps key characters", () => {
+    expect(
+      parseTrailers("s\n\nSigned-off-by: Alice\n", { separators: "-:" }),
+    ).toMatchObject({
+      trailers: [
+        {
+          key: "Signed",
+          value: "off-by: Alice",
+          separator: "-",
+        },
+      ],
+    });
+  });
+
   it("ends a trailer block at a divider before a patch", () => {
     expect(
       parseTrailers("s\n\nKey: v\n---\ndiff --git a/a b/a\n"),

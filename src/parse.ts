@@ -162,9 +162,16 @@ function findTrailerBlockStart(
 
     if (isComment(line.content)) continue;
 
+    if (isRecognizedPrefix(line.content)) {
+      trailerLines += 1;
+      possibleContinuationLines = 0;
+      recognizedPrefix = true;
+      continue;
+    }
+
     const separator = findSeparator(line.content, separators);
     if (separator !== -1) {
-      trailerLines += 1 + possibleContinuationLines;
+      trailerLines += 1;
       possibleContinuationLines = 0;
       const key = line.content.slice(0, separator).trim();
       if (isRecognizedPrefix(line.content) || isKnownKey(key, knownKeys)) {
@@ -180,20 +187,26 @@ function findTrailerBlockStart(
 
     nonTrailerLines += 1 + possibleContinuationLines;
     possibleContinuationLines = 0;
-    if (isRecognizedPrefix(line.content)) recognizedPrefix = true;
   }
 
   return -1;
 }
 
 function findSeparator(line: string, separators: string): number {
-  if (!isTokenCharacter(line[0])) return -1;
+  let whitespaceFound = false;
 
-  let index = 0;
-  while (isTokenCharacter(line[index])) index += 1;
-  while (line[index] === " " || line[index] === "\t") index += 1;
-  const separator = line[index];
-  return separator !== undefined && separators.includes(separator) ? index : -1;
+  for (let index = 0; index < line.length; index += 1) {
+    const character = line[index]!;
+    if (separators.includes(character)) return index === 0 ? -1 : index;
+    if (!whitespaceFound && isTokenCharacter(character)) continue;
+    if (index !== 0 && (character === " " || character === "\t")) {
+      whitespaceFound = true;
+      continue;
+    }
+    break;
+  }
+
+  return -1;
 }
 
 function parseTrailerEntries(
