@@ -1,0 +1,39 @@
+version: 2
+updates:
+  # TypeScript 7 is incompatible with tsup declaration generation; review it manually.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: monthly
+    labels:
+      - dependencies
+      - security
+      - automated-pr
+    groups:
+      minor-and-patch:
+        update-types:
+          - minor
+          - patch
+    # Major dependency updates require manual compatibility review.
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - version-update:semver-major
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    labels:
+      - dependencies
+      - security
+      - automated-pr
+    groups:
+      minor-and-patch:
+        update-types:
+          - minor
+          - patch
+    # Major action updates require manual review.
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - version-update:semver-major
