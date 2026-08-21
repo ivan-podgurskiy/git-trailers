@@ -1,9 +1,19 @@
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  copyFileSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import ts from "typescript";
+
+import { validatePackageExports } from "./package-exports.mjs";
 
 const MAX_UNPACKED_SIZE = 42_445;
 const expectedFiles = [
@@ -35,7 +45,9 @@ const expectedDeclarationExports = [
   ...expectedRuntimeExports,
 ];
 
-const errors = verifyPackageExports();
+const errors = validatePackageExports(
+  JSON.parse(readFileSync("package.json", "utf8")),
+);
 errors.push(...(await verifyBuildOutputs()));
 
 const cache = mkdtempSync(join(tmpdir(), "git-trailers-pack-"));
@@ -113,54 +125,6 @@ console.log(
 console.log(
   manifest.files.map(({ path, size }) => `- ${path}: ${size} bytes`).join("\n"),
 );
-
-function verifyPackageExports() {
-  const packageJson = JSON.parse(readFileSync("package.json", "utf8"));
-  const errors = [];
-  const expectedMetadata = {
-    main: "./dist/index.cjs",
-    module: "./dist/index.js",
-    types: "./dist/index.d.ts",
-  };
-
-  for (const [key, value] of Object.entries(expectedMetadata)) {
-    if (packageJson[key] !== value) {
-      errors.push(`package.json ${key} must be ${value}.`);
-    }
-  }
-
-  const rootExport = packageJson.exports?.["."];
-  const expectedConditions = {
-    import: {
-      types: "./dist/index.d.ts",
-      default: "./dist/index.js",
-    },
-    require: {
-      types: "./dist/index.d.cts",
-      default: "./dist/index.cjs",
-    },
-  };
-
-  if (rootExport?.types !== undefined) {
-    errors.push(
-      'package.json exports["."] must not have a top-level types condition because it preempts import and require declaration resolution.',
-    );
-  }
-  for (const [condition, expected] of Object.entries(expectedConditions)) {
-    const actual = rootExport?.[condition];
-    if (
-      actual?.types !== expected.types ||
-      actual?.default !== expected.default ||
-      Object.keys(actual ?? {}).length !== 2
-    ) {
-      errors.push(
-        `package.json exports[\".\"].${condition} must be ${JSON.stringify(expected)}.`,
-      );
-    }
-  }
-
-  return errors;
-}
 
 async function verifyBuildOutputs() {
   const errors = [];
@@ -240,18 +204,23 @@ function verifyDeclarationExports() {
 function verifyTypeScriptConsumerResolution() {
   const errors = [];
   const consumerDirectory = mkdtempSync(
-    join(process.cwd(), ".git-trailers-package-consumer-"),
+    join(tmpdir(), "git-trailers-installed-consumer-"),
+  );
+  const installedPackageDirectory = join(
+    consumerDirectory,
+    "node_modules",
+    "git-trailers",
   );
   const consumers = [
     {
       kind: "ESM",
       file: join(consumerDirectory, "consumer.mts"),
-      expectedDeclaration: resolve("dist/index.d.ts"),
+      expectedDeclaration: join(installedPackageDirectory, "dist/index.d.ts"),
     },
     {
       kind: "CommonJS",
       file: join(consumerDirectory, "consumer.cts"),
-      expectedDeclaration: resolve("dist/index.d.cts"),
+      expectedDeclaration: join(installedPackageDirectory, "dist/index.d.cts"),
     },
   ];
   const compilerOptions = {
@@ -263,6 +232,27 @@ function verifyTypeScriptConsumerResolution() {
   };
 
   try {
+    writeFileSync(
+      join(consumerDirectory, "package.json"),
+      `${JSON.stringify({ name: "git-trailers-installed-consumer", private: true }, null, 2)}\n`,
+    );
+    mkdirSync(join(installedPackageDirectory, "dist"), { recursive: true });
+    copyFileSync(
+      "package.json",
+      join(installedPackageDirectory, "package.json"),
+    );
+    for (const output of [
+      "index.cjs",
+      "index.d.cts",
+      "index.d.ts",
+      "index.js",
+    ]) {
+      copyFileSync(
+        join("dist", output),
+        join(installedPackageDirectory, "dist", output),
+      );
+    }
+
     for (const consumer of consumers) {
       writeFileSync(
         consumer.file,
@@ -298,13 +288,16 @@ function verifyTypeScriptConsumerResolution() {
         errors.push(
           `${consumer.kind} consumer could not resolve git-trailers.`,
         );
-      } else if (resolution.resolvedFileName !== consumer.expectedDeclaration) {
+      } else if (
+        realpathSync(resolution.resolvedFileName) !==
+        realpathSync(consumer.expectedDeclaration)
+      ) {
         errors.push(
           `${consumer.kind} consumer resolved ${resolution.resolvedFileName}; expected ${consumer.expectedDeclaration}.`,
         );
       } else {
         console.log(
-          `${consumer.kind} TypeScript consumer resolved ${resolution.resolvedFileName}.`,
+          `${consumer.kind} installed TypeScript consumer resolved ${resolution.resolvedFileName}.`,
         );
       }
     }
