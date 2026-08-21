@@ -370,13 +370,39 @@ function findOverlappingSeparatorBlockStart(
   for (let index = lines.length - 1; index >= 0; index -= 1) {
     const line = lines[index]!;
     if (line.end > end) continue;
-    if (isBlank(line.content)) return trailers > 0 ? index + 1 : -1;
+    if (isBlank(line.content)) {
+      return trailers > 0 &&
+        isFallbackTrailerBlock(lines, index + 1, end, separators)
+        ? index + 1
+        : -1;
+    }
     if (line.content.startsWith("#")) continue;
     if (/^[ \t]/.test(line.content)) continue;
     if (parseTrailerLine(line.content, separators) === undefined) return -1;
     trailers += 1;
   }
   return -1;
+}
+
+function isFallbackTrailerBlock(
+  lines: PhysicalLine[],
+  start: number,
+  end: number,
+  separators: string,
+): boolean {
+  let sawTrailer = false;
+  for (let index = start; index < lines.length; index += 1) {
+    const line = lines[index]!;
+    if (line.start >= end) break;
+    if (line.content.startsWith("#")) continue;
+    if (/^[ \t]/.test(line.content)) {
+      if (!sawTrailer) return false;
+      continue;
+    }
+    if (parseTrailerLine(line.content, separators) === undefined) return false;
+    sawTrailer = true;
+  }
+  return sawTrailer;
 }
 
 function serializeBlock(

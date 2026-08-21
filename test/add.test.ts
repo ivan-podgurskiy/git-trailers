@@ -188,6 +188,16 @@ describe("addTrailers", () => {
     ).toBe(message);
   });
 
+  it("rejects an orphan continuation from an overlapping-separator fallback block", () => {
+    expect(
+      addTrailers(
+        "subject\n\n  orphan\nFixes- one\n",
+        [{ key: "Reviewed-by", value: "A" }],
+        { separators: "-:" },
+      ),
+    ).toBe("subject\n\n  orphan\nFixes- one\n\nReviewed-by- A\n");
+  });
+
   it("retains folded trailers and internal non-trailer records", () => {
     expect(
       addTrailers(
