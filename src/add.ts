@@ -58,9 +58,9 @@ export function addTrailers(
     throw new TypeError("message must be a string");
   if (!Array.isArray(trailers))
     throw new TypeError("trailers must be an array");
+  const normalized = normalizeOptions(options);
   if (trailers.length === 0) return message;
 
-  const normalized = normalizeOptions(options);
   const incoming = trailers.map(validateTrailer);
   const lines = scanLines(message);
   const newline = detectNewline(lines);
@@ -70,9 +70,7 @@ export function addTrailers(
     unfold: false,
   });
   const hasBlock = parsed.blockStart !== -1;
-  const suffixStart = hasBlock
-    ? effectiveEnd(lines, normalized.divider)
-    : dividerOrScissorsStart(lines, normalized.divider, message.length);
+  const suffixStart = effectiveEnd(lines, normalized.divider);
   const blockStart = hasBlock ? lines[parsed.blockStart]!.start : suffixStart;
   let items = hasBlock
     ? parseBlockItems(
@@ -214,8 +212,9 @@ function insertionIndex(
       item.kind === "trailer" && sameToken(item.key, key) ? index : -1,
     )
     .filter((index) => index !== -1);
-  if (matching.length === 0) return where === "start" ? 0 : items.length;
-  if (where === "start" || where === "before") return matching[0]!;
+  if (where === "start") return 0;
+  if (matching.length === 0) return items.length;
+  if (where === "before") return matching[0]!;
   if (where === "after") return matching[matching.length - 1]! + 1;
   return items.length;
 }
@@ -244,7 +243,7 @@ function applyOne(
 
   let index = insertionIndex(items, trailer.key, options.where);
   if (matching.length > 0 && options.ifExists === "addIfDifferentNeighbor") {
-    const neighbor = items[index === 0 ? 0 : index - 1];
+    const neighbor = items[options.where === "before" ? index : index - 1];
     if (
       neighbor?.kind === "trailer" &&
       sameToken(neighbor.key, trailer.key) &&

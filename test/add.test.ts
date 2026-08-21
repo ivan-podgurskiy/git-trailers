@@ -32,6 +32,15 @@ describe("addTrailers", () => {
     expect(addTrailers(base, [{ key: "Fixes", value: "two" }])).toBe(base);
   });
 
+  it("uses the trailer after a before insertion as its duplicate neighbor", () => {
+    const message = "subject\n\nReviewed-by: A\nFixes: two\n";
+    expect(
+      addTrailers(message, [{ key: "Fixes", value: "two" }], {
+        where: "before",
+      }),
+    ).toBe(message);
+  });
+
   it("allows a value that differs from its insertion neighbor", () => {
     expect(addTrailers(base, [{ key: "Fixes", value: "one" }])).toBe(
       "subject\n\nFixes: one\nReviewed-by: A\nFixes: two\nFixes: one\n",
@@ -106,11 +115,89 @@ describe("addTrailers", () => {
     );
   });
 
+  it("places start at the beginning of the block, not the first matching key", () => {
+    expect(
+      addTrailers(
+        "subject\n\nReviewed-by: A\nFixes: one\n",
+        [{ key: "Fixes", value: "two" }],
+        { where: "start", ifExists: "add" },
+      ),
+    ).toBe("subject\n\nFixes: two\nReviewed-by: A\nFixes: one\n");
+  });
+
+  it("applies additions sequentially", () => {
+    expect(
+      addTrailers("subject", [
+        { key: "Reviewed-by", value: "A" },
+        { key: "Reviewed-by", value: "B" },
+      ]),
+    ).toBe("subject\n\nReviewed-by: A\nReviewed-by: B\n");
+  });
+
+  it("uses observed CRLF when mutating an existing block", () => {
+    expect(
+      addTrailers("subject\r\n\r\nFixes: one\r\n", [
+        { key: "Reviewed-by", value: "A" },
+      ]),
+    ).toBe("subject\r\n\r\nFixes: one\r\nReviewed-by: A\r\n");
+  });
+
+  it("retains folded trailers and internal non-trailer records", () => {
+    expect(
+      addTrailers(
+        "subject\n\nSigned-off-by: A\n  folded value\nnot trailer\n",
+        [{ key: "Reviewed-by", value: "B" }],
+      ),
+    ).toBe(
+      "subject\n\nSigned-off-by: A\n  folded value\nnot trailer\nReviewed-by: B\n",
+    );
+  });
+
+  it("inserts before a trailing ignored blank and comment suffix", () => {
+    expect(
+      addTrailers("subject\n\nbody\n\n# keep\n", [
+        { key: "Reviewed-by", value: "A" },
+      ]),
+    ).toBe("subject\n\nbody\n\nReviewed-by: A\n\n# keep\n");
+  });
+
+  it("preserves a scissors suffix when divider processing is disabled", () => {
+    expect(
+      addTrailers(
+        "subject\n\n# ------------------------ >8 ------------------------\nignored\n",
+        [{ key: "Reviewed-by", value: "A" }],
+        { divider: false },
+      ),
+    ).toBe(
+      "subject\n\nReviewed-by: A\n\n# ------------------------ >8 ------------------------\nignored\n",
+    );
+  });
+
+  it("validates empty additions before returning the original message", () => {
+    expect(() =>
+      addTrailers("subject", [], { where: "middle" as never }),
+    ).toThrow(TypeError);
+  });
+
+  it("rejects invalid add arguments and options", () => {
+    expect(() =>
+      addTrailers("subject", null as unknown as [], undefined),
+    ).toThrow(TypeError);
+    expect(() =>
+      addTrailers("subject", [{ key: "invalid key", value: "A" }]),
+    ).toThrow(TypeError);
+    expect(() =>
+      addTrailers("subject", [{ key: "Reviewed-by", value: "A" }], {
+        separators: "",
+      }),
+    ).toThrow(TypeError);
+  });
+
   it("leaves a divider and patch suffix byte-for-byte unchanged", () => {
     expect(
       addTrailers("subject\n\n---\ndiff --git a/a b/a\n", [
         { key: "Reviewed-by", value: "A" },
       ]),
-    ).toBe("subject\n\nReviewed-by: A\n---\ndiff --git a/a b/a\n");
+    ).toBe("subject\n\nReviewed-by: A\n\n---\ndiff --git a/a b/a\n");
   });
 });
