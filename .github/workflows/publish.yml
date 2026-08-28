@@ -43,7 +43,7 @@ jobs:
           test "$(git -C "$GIT_SOURCE_DIR" describe --tags --exact-match HEAD)" = "$GIT_TAG"
           (
             cd "$GIT_SOURCE_DIR"
-            make -j2 NO_TCLTK=YesPlease
+            make -j2 NO_CURL=YesPlease NO_TCLTK=YesPlease
           )
           cp "$GIT_SOURCE_DIR/git" "$GIT_TRAILERS_GIT"
           chmod +x "$GIT_TRAILERS_GIT"
