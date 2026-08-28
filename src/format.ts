@@ -27,6 +27,9 @@ export function validateTrailer(trailer: TrailerInput): TrailerInput {
   if (typeof trailer.key !== "string" || typeof trailer.value !== "string") {
     throw new TypeError("trailer key and value must be strings");
   }
+  if (/[\r\n]/.test(trailer.value)) {
+    throw new TypeError("trailer value must not contain CR or LF characters");
+  }
 
   const key = trailer.key.trim();
   if (!/^[A-Za-z0-9-]+$/.test(key)) {

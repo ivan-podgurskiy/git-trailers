@@ -263,6 +263,19 @@ describe("addTrailers", () => {
     ).toThrow(TypeError);
   });
 
+  it.each([
+    ["LF", "one\ntwo"],
+    ["CR", "one\rtwo"],
+    ["CRLF", "one\r\ntwo"],
+  ])("rejects an added value containing %s", (_name, value) => {
+    expect(() =>
+      addTrailers("subject", [
+        { key: "First", value: "valid" },
+        { key: "Second", value },
+      ]),
+    ).toThrow(TypeError);
+  });
+
   it("leaves a divider and patch suffix byte-for-byte unchanged", () => {
     expect(
       addTrailers("subject\n\n---\ndiff --git a/a b/a\n", [

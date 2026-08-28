@@ -200,7 +200,11 @@ function serializeTrailers(trailers: readonly TrailerInput[]): string;
 `serializeTrailers` formats each input with that default and joins them with
 `"\n"`. `addTrailers`, `formatTrailer`, and `serializeTrailers` throw
 `TypeError` for invalid argument shapes, values, or options; message content
-itself is never a parse error.
+itself is never a parse error. Every caller-supplied `TrailerInput.value` must
+fit on one physical line: a value containing `"\r"` or `"\n"` is a programmer
+error and throws `TypeError`. This does not restrict parsed message content;
+folded input remains valid, and `parseTrailers` with `unfold: false` can return
+a value containing its original line endings.
 
 ## Compatibility
 

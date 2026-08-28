@@ -25,4 +25,25 @@ describe("trailer formatting", () => {
   it.each(["", "bad key"])("rejects an invalid key (%j)", (key) => {
     expect(() => formatTrailer({ key, value: "x" })).toThrow(TypeError);
   });
+
+  it.each([
+    ["LF", "one\ntwo"],
+    ["CR", "one\rtwo"],
+    ["CRLF", "one\r\ntwo"],
+  ])("rejects a value containing %s", (_name, value) => {
+    expect(() => formatTrailer({ key: "Key", value })).toThrow(TypeError);
+  });
+
+  it.each([
+    ["LF", "one\ntwo"],
+    ["CR", "one\rtwo"],
+    ["CRLF", "one\r\ntwo"],
+  ])("rejects serialization when a value contains %s", (_name, value) => {
+    expect(() =>
+      serializeTrailers([
+        { key: "First", value: "valid" },
+        { key: "Second", value },
+      ]),
+    ).toThrow(TypeError);
+  });
 });

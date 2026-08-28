@@ -1,13 +1,14 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
-import { addTrailers, parseTrailers } from "../src/index.js";
+import { addTrailers, formatTrailer, parseTrailers } from "../src/index.js";
 
 const safeText = fc.string({
   unit: fc.constantFrom(
     ..."abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 .,!?",
   ),
 });
+const trailerValue = fc.string().filter((value) => !/[\r\n]/.test(value));
 
 describe("public API properties", () => {
   it("parseTrailers is total for arbitrary message strings", () => {
@@ -24,7 +25,7 @@ describe("public API properties", () => {
       fc.property(
         fc.string(),
         fc.stringMatching(/^[A-Za-z0-9-]+$/),
-        fc.string(),
+        trailerValue,
         (message, key, value) => {
           const output = addTrailers(message, [{ key, value }], {
             ifExists: "add",
@@ -37,6 +38,24 @@ describe("public API properties", () => {
         },
       ),
       { numRuns: 500, seed: 0x75130002 },
+    );
+  });
+
+  it("multiline TrailerInput values are always rejected", () => {
+    fc.assert(
+      fc.property(
+        trailerValue,
+        fc.constantFrom("\n", "\r", "\r\n"),
+        trailerValue,
+        (before, lineBreak, after) => {
+          const value = `${before}${lineBreak}${after}`;
+          expect(() => formatTrailer({ key: "Key", value })).toThrow(TypeError);
+          expect(() => addTrailers("subject", [{ key: "Key", value }])).toThrow(
+            TypeError,
+          );
+        },
+      ),
+      { numRuns: 500, seed: 0x75130005 },
     );
   });
 
