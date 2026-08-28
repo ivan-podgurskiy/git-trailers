@@ -106,6 +106,16 @@ describe("parseTrailers", () => {
     });
   });
 
+  it("rejects a line when the first configured separator occurs at offset zero", () => {
+    expect(
+      parseTrailers("subject\n\nKey: value\n", { separators: "K:" }),
+    ).toMatchObject({
+      trailers: [],
+      body: "\nKey: value\n",
+      blockStart: -1,
+    });
+  });
+
   it("ends a trailer block at a divider before a patch", () => {
     expect(
       parseTrailers("s\n\nKey: v\n---\ndiff --git a/a b/a\n"),

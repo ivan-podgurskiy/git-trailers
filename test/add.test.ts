@@ -183,6 +183,16 @@ describe("addTrailers", () => {
     ).toBe("subject\n\nSigned- off-by: A\nSigned- B\n");
   });
 
+  it("creates a new block when a configured separator occurs at offset zero", () => {
+    expect(
+      addTrailers(
+        "subject\n\nKey: value\n",
+        [{ key: "Reviewed-by", value: "A" }],
+        { separators: "K:" },
+      ),
+    ).toBe("subject\n\nKey: value\n\nReviewed-byK A\n");
+  });
+
   it("recognizes a folded overlapping-separator trailer without appending a block", () => {
     const message = "subject\n\nFixes- one\n  continued\n";
     expect(

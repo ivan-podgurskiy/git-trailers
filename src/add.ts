@@ -1,5 +1,6 @@
 import { detectNewline, scanLines, type PhysicalLine } from "./lines.js";
 import { parseTrailers } from "./parse.js";
+import { parseTrailerLine } from "./trailer-line.js";
 import { validateTrailer, type TrailerInput } from "./format.js";
 
 export type AddWhere = "end" | "start" | "after" | "before";
@@ -325,36 +326,6 @@ function parseBlockItems(
     });
   }
   return items;
-}
-
-function parseTrailerLine(
-  line: string,
-  separators: string,
-): { key: string; value: string } | undefined {
-  if (!/[A-Za-z0-9-]/.test(line[0] ?? "")) return undefined;
-  let index = 0;
-  while (/[A-Za-z0-9-]/.test(line[index] ?? "")) index += 1;
-
-  let overlappingSeparator = -1;
-  for (let position = 1; position < index; position += 1) {
-    if (separators.includes(line[position]!)) {
-      overlappingSeparator = position;
-      break;
-    }
-  }
-  if (overlappingSeparator !== -1) {
-    return {
-      key: line.slice(0, overlappingSeparator),
-      value: trimHorizontal(line.slice(overlappingSeparator + 1)),
-    };
-  }
-
-  while (line[index] === " " || line[index] === "\t") index += 1;
-  if (!separators.includes(line[index] ?? "")) return undefined;
-  return {
-    key: trimHorizontal(line.slice(0, index)),
-    value: trimHorizontal(line.slice(index + 1)),
-  };
 }
 
 function findOverlappingSeparatorBlockStart(

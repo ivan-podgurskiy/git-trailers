@@ -1,4 +1,5 @@
 import { scanLines, type PhysicalLine } from "./lines.js";
+import { parseTrailerLine } from "./trailer-line.js";
 import type { ParseOptions, ParseResult, Trailer } from "./types.js";
 
 const DEFAULT_OPTIONS: Required<ParseOptions> = {
@@ -169,12 +170,14 @@ function findTrailerBlockStart(
       continue;
     }
 
-    const separator = findSeparator(line.content, separators);
-    if (separator !== -1) {
+    const trailer = parseTrailerLine(line.content, separators);
+    if (trailer !== undefined) {
       trailerLines += 1;
       possibleContinuationLines = 0;
-      const key = line.content.slice(0, separator).trim();
-      if (isRecognizedPrefix(line.content) || isKnownKey(key, knownKeys)) {
+      if (
+        isRecognizedPrefix(line.content) ||
+        isKnownKey(trailer.key, knownKeys)
+      ) {
         recognizedPrefix = true;
       }
       continue;
@@ -192,23 +195,6 @@ function findTrailerBlockStart(
   return -1;
 }
 
-function findSeparator(line: string, separators: string): number {
-  let whitespaceFound = false;
-
-  for (let index = 0; index < line.length; index += 1) {
-    const character = line[index]!;
-    if (separators.includes(character)) return index === 0 ? -1 : index;
-    if (!whitespaceFound && isTokenCharacter(character)) continue;
-    if (index !== 0 && (character === " " || character === "\t")) {
-      whitespaceFound = true;
-      continue;
-    }
-    break;
-  }
-
-  return -1;
-}
-
 function parseTrailerEntries(
   lines: PhysicalLine[],
   blockStart: number,
@@ -220,23 +206,23 @@ function parseTrailerEntries(
 
   for (let index = blockStart; index <= endIndex; index += 1) {
     const line = lines[index]!;
-    const separator = findSeparator(line.content, options.separators);
-    if (separator === -1) continue;
+    const trailer = parseTrailerLine(line.content, options.separators);
+    if (trailer === undefined) continue;
 
     let end = index;
     while (end + 1 <= endIndex && isContinuation(lines[end + 1]!.content))
       end += 1;
     const valueLines = lines.slice(index, end + 1);
     trailers.push({
-      key: trimHorizontal(line.content.slice(0, separator)),
-      value: normalizeValue(valueLines, separator, options.unfold),
+      key: trailer.key,
+      value: normalizeValue(valueLines, trailer.separatorIndex, options.unfold),
       raw:
         line.raw +
         lines
           .slice(index + 1, end + 1)
           .map((continuation) => continuation.raw)
           .join(""),
-      separator: line.content[separator]!,
+      separator: trailer.separator,
     });
     index = end;
   }
@@ -269,10 +255,6 @@ function lastLineBefore(lines: PhysicalLine[], offset: number): number {
     if (lines[index]!.end <= offset) return index;
   }
   return -1;
-}
-
-function isTokenCharacter(character: string | undefined): boolean {
-  return character !== undefined && /[A-Za-z0-9-]/.test(character);
 }
 
 function isBlank(line: string | undefined): boolean {
