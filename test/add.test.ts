@@ -173,6 +173,48 @@ describe("addTrailers", () => {
     ).toBe("subject\n\nFixesa two\n");
   });
 
+  it.each([
+    ["SP", " ", "Key value", "Key  value\nOther  next"],
+    ["TAB", "\t", "Key\tvalue", "Key\t value\nOther\t next"],
+  ])(
+    "uses a horizontal %s separator when mutating an existing block",
+    (_name, separator, existing, expected) => {
+      expect(
+        addTrailers(
+          `subject\n\n${existing}\n`,
+          [{ key: "Other", value: "next" }],
+          { separators: separator },
+        ),
+      ).toBe(`subject\n\n${expected}\n`);
+    },
+  );
+
+  it.each([
+    ["SP", " ", "Key  value"],
+    ["TAB", "\t", "Key\t value"],
+  ])(
+    "uses a horizontal %s separator for a new block",
+    (_name, separator, expected) => {
+      expect(
+        addTrailers("subject", [{ key: "Key", value: "value" }], {
+          separators: separator,
+        }),
+      ).toBe(`subject\n\n${expected}\n`);
+    },
+  );
+
+  it.each([
+    ["CR", "\r"],
+    ["LF", "\n"],
+    ["CRLF", "\r\n"],
+  ])("rejects an add separator containing %s", (_name, separators) => {
+    expect(() =>
+      addTrailers("subject", [{ key: "Key", value: "value" }], {
+        separators,
+      }),
+    ).toThrow(TypeError);
+  });
+
   it("uses the first repeated overlapping separator for canonical trailer records", () => {
     expect(
       addTrailers(

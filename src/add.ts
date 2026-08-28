@@ -192,10 +192,10 @@ function normalizeOptions(options?: AddOptions): NormalizedAddOptions {
   if (
     typeof normalized.separators !== "string" ||
     normalized.separators.length === 0 ||
-    /\s/.test(normalized.separators)
+    /[\r\n]/.test(normalized.separators)
   ) {
     throw new TypeError(
-      "separators must be a non-empty string of non-whitespace characters",
+      "separators must be a non-empty string without CR or LF characters",
     );
   }
   return normalized;

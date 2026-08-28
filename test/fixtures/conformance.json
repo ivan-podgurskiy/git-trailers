@@ -188,6 +188,44 @@
       }
     },
     {
+      "name": "space separator",
+      "input": "subject\n\nKey value\n",
+      "options": { "separators": " " },
+      "expected": {
+        "trailers": [
+          {
+            "key": "Key",
+            "value": "value",
+            "raw": "Key value\n",
+            "separator": " "
+          }
+        ],
+        "subject": "subject",
+        "body": "",
+        "blockStart": 2,
+        "hasDivider": false
+      }
+    },
+    {
+      "name": "tab separator",
+      "input": "subject\n\nKey\tvalue\n",
+      "options": { "separators": "\t" },
+      "expected": {
+        "trailers": [
+          {
+            "key": "Key",
+            "value": "value",
+            "raw": "Key\tvalue\n",
+            "separator": "\t"
+          }
+        ],
+        "subject": "subject",
+        "body": "",
+        "blockStart": 2,
+        "hasDivider": false
+      }
+    },
+    {
       "name": "second configured separator retained in parse result",
       "input": "subject\n\nKey: value\n",
       "options": { "separators": "%:" },
@@ -553,6 +591,20 @@
       "trailers": [{ "key": "Bug", "value": "42" }],
       "options": { "separators": "%$" },
       "expected": "subject\n\nBug% 42\n"
+    },
+    {
+      "name": "space separator used for canonical addition",
+      "input": "subject",
+      "trailers": [{ "key": "Key", "value": "value" }],
+      "options": { "separators": " " },
+      "expected": "subject\n\nKey  value\n"
+    },
+    {
+      "name": "tab separator used for canonical addition",
+      "input": "subject",
+      "trailers": [{ "key": "Key", "value": "value" }],
+      "options": { "separators": "\t" },
+      "expected": "subject\n\nKey\t value\n"
     },
     {
       "name": "CRLF preserved during mutation",

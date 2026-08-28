@@ -102,7 +102,7 @@ test("differential Git subprocesses ignore ambient Git state and use a fresh dir
       .trimEnd()
       .split("\n")
       .map((line) => JSON.parse(line));
-    expect(invocations).toHaveLength(45);
+    expect(invocations).toHaveLength(49);
     expect(new Set(invocations.map((invocation) => invocation.cwd)).size).toBe(
       1,
     );

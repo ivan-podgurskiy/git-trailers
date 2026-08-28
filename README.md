@@ -191,6 +191,14 @@ handling; `replace` removes the matching trailer nearest the insertion point.
 `ifMissing: "doNothing"` suppresses a new key, and `trimEmpty: true` removes
 empty existing trailers and skips empty additions.
 
+`AddOptions.separators` must be non-empty and cannot contain CR or LF. Every
+configured character is recognized in input, including SP and TAB, and the
+first character is used for canonical additions. The canonical following space
+is separate from the configured separator, so an SP separator emits
+`Key  value`, while TAB emits `Key\t value`. This differs intentionally from
+the optional `formatTrailer` separator, which must be exactly one
+non-whitespace character.
+
 ```ts
 function formatTrailer(trailer: TrailerInput, separator?: string): string;
 function serializeTrailers(trailers: readonly TrailerInput[]): string;
