@@ -188,6 +188,25 @@
       }
     },
     {
+      "name": "second configured separator retained in parse result",
+      "input": "subject\n\nKey: value\n",
+      "options": { "separators": "%:" },
+      "expected": {
+        "trailers": [
+          {
+            "key": "Key",
+            "value": "value",
+            "raw": "Key: value\n",
+            "separator": ":"
+          }
+        ],
+        "subject": "subject",
+        "body": "",
+        "blockStart": 2,
+        "hasDivider": false
+      }
+    },
+    {
       "name": "custom separator overlapping key character",
       "input": "subject\n\nSigned-off-by: Alice\n",
       "options": { "separators": "-:" },

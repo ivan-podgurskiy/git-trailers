@@ -32,6 +32,10 @@ test("differential Git subprocesses ignore ambient Git state and use a fresh dir
     mkdirSync(dirname(library), { recursive: true });
     copyFileSync(join(projectRoot, "scripts", "differential.mjs"), runner);
     copyFileSync(
+      join(projectRoot, "scripts", "differential-output.mjs"),
+      join(fixtureRoot, "scripts", "differential-output.mjs"),
+    );
+    copyFileSync(
       join(projectRoot, "test", "fixtures", "conformance.json"),
       corpus,
     );
@@ -98,7 +102,7 @@ test("differential Git subprocesses ignore ambient Git state and use a fresh dir
       .trimEnd()
       .split("\n")
       .map((line) => JSON.parse(line));
-    expect(invocations).toHaveLength(44);
+    expect(invocations).toHaveLength(45);
     expect(new Set(invocations.map((invocation) => invocation.cwd)).size).toBe(
       1,
     );

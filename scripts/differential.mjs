@@ -3,6 +3,8 @@ import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 import { join } from "node:path";
 
+import { buildExpectedParseOutput } from "./differential-output.mjs";
+
 const REQUIRED_VERSION = "git version 2.54.0\n";
 const gitBinary = process.env.GIT_TRAILERS_GIT;
 const failures = [];
@@ -71,9 +73,7 @@ try {
   for (const testCase of corpus.parseCases) {
     const options = testCase.options ?? {};
     const result = library.parseTrailers(testCase.input, options);
-    const expected = result.trailers
-      .map((trailer) => `${trailer.key}${trailer.separator} ${trailer.value}\n`)
-      .join("");
+    const expected = buildExpectedParseOutput(result, options);
     const args = gitConfigArgs(options);
     args.push("interpret-trailers");
     args.push(options.unfold === false ? "--only-trailers" : "--parse");
