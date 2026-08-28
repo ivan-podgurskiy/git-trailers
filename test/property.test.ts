@@ -20,6 +20,17 @@ describe("public API properties", () => {
     );
   });
 
+  it("repeated parsing is stable for arbitrary message strings", () => {
+    fc.assert(
+      fc.property(fc.string(), (message) => {
+        const first = parseTrailers(message);
+        expect(parseTrailers(message)).toEqual(first);
+        expect(parseTrailers(message)).toEqual(first);
+      }),
+      { numRuns: 1_000, seed: 0x75130006 },
+    );
+  });
+
   it("an always-added trailer is observable through parsing", () => {
     fc.assert(
       fc.property(
