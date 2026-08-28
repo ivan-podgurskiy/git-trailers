@@ -18,3 +18,20 @@ test("Git parse stdout uses the first configured separator", () => {
     "Key% value\n",
   );
 });
+
+test("Git parse stdout uses configured key casing for a known key", () => {
+  const result = {
+    trailers: [
+      {
+        key: "Audit-key",
+        value: "yes",
+        raw: "Audit-key: yes\n",
+        separator: ":",
+      },
+    ],
+  };
+
+  expect(buildExpectedParseOutput(result, { knownKeys: ["audit-KEY"] })).toBe(
+    "audit-KEY: yes\n",
+  );
+});

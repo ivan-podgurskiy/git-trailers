@@ -191,6 +191,11 @@ handling; `replace` removes the matching trailer nearest the insertion point.
 `ifMissing: "doNothing"` suppresses a new key, and `trimEmpty: true` removes
 empty existing trailers and skips empty additions.
 
+When a mutation occurs, Git canonicalizes the affected trailer block with LF
+line endings. Bytes outside that block keep their original endings, so a CRLF
+message can intentionally contain a CRLF prefix followed by an LF trailer
+block. An empty addition list still returns the complete input byte-for-byte.
+
 `AddOptions.separators` must be non-empty and cannot contain CR or LF. Every
 configured character is recognized in input, including SP and TAB, and the
 first character is used for canonical additions. The canonical following space

@@ -1,4 +1,4 @@
-import { detectNewline, scanLines, type PhysicalLine } from "./lines.js";
+import { scanLines, type PhysicalLine } from "./lines.js";
 import { parseTrailers } from "./parse.js";
 import { parseTrailerLine } from "./trailer-line.js";
 import { validateTrailer, type TrailerInput } from "./format.js";
@@ -64,7 +64,7 @@ export function addTrailers(
 
   const incoming = trailers.map(validateTrailer);
   const lines = scanLines(message);
-  const newline = detectNewline(lines);
+  const newline = "\n";
   const parsed = parseTrailers(message, {
     separators: normalized.separators,
     divider: normalized.divider,

@@ -147,12 +147,18 @@ describe("addTrailers", () => {
     ).toBe("subject\n\nReviewed-by: A\nReviewed-by: B\n");
   });
 
-  it("uses observed CRLF when mutating an existing block", () => {
+  it("preserves CRLF outside an existing block and canonicalizes the block to LF", () => {
     expect(
       addTrailers("subject\r\n\r\nFixes: one\r\n", [
         { key: "Reviewed-by", value: "A" },
       ]),
-    ).toBe("subject\r\n\r\nFixes: one\r\nReviewed-by: A\r\n");
+    ).toBe("subject\r\n\r\nFixes: one\nReviewed-by: A\n");
+  });
+
+  it("preserves an existing CRLF before a new LF trailer block", () => {
+    expect(
+      addTrailers("subject\r\n", [{ key: "Reviewed-by", value: "A" }]),
+    ).toBe("subject\r\n\nReviewed-by: A\n");
   });
 
   it("recognizes an overlapping hyphen separator for replacement and canonicalization", () => {

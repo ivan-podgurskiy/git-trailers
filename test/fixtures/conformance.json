@@ -607,10 +607,16 @@
       "expected": "subject\n\nKey\t value\n"
     },
     {
-      "name": "CRLF preserved during mutation",
+      "name": "CRLF preserved outside LF-canonicalized mutated block",
       "input": "subject\r\n\r\nFixes: one\r\n",
       "trailers": [{ "key": "Reviewed-by", "value": "Alice" }],
-      "expected": "subject\r\n\r\nFixes: one\r\nReviewed-by: Alice\r\n"
+      "expected": "subject\r\n\r\nFixes: one\nReviewed-by: Alice\n"
+    },
+    {
+      "name": "existing CRLF retained before new LF trailer block",
+      "input": "subject\r\n",
+      "trailers": [{ "key": "Reviewed-by", "value": "Alice" }],
+      "expected": "subject\r\n\nReviewed-by: Alice\n"
     },
     {
       "name": "existing trailer without terminal newline is normalized on mutation",

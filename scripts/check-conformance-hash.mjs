@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 
 const EXPECTED_SHA256 =
-  "370656cc18b2c753b458b26e824f1cc095a0b6a1ac4143a78da898c6623cddf8";
+  "46a387d535d6b70ca797900e20fd5081ce160358e0dd92265bc2b6993f799306";
 const fixture = new URL("../test/fixtures/conformance.json", import.meta.url);
 const actual = createHash("sha256").update(readFileSync(fixture)).digest("hex");
 

@@ -39,6 +39,7 @@ test("differential Git subprocesses ignore ambient Git state and use a fresh dir
       join(projectRoot, "test", "fixtures", "conformance.json"),
       corpus,
     );
+    const corpusData = JSON.parse(readFileSync(corpus, "utf8"));
     writeFileSync(
       library,
       `
@@ -102,7 +103,9 @@ test("differential Git subprocesses ignore ambient Git state and use a fresh dir
       .trimEnd()
       .split("\n")
       .map((line) => JSON.parse(line));
-    expect(invocations).toHaveLength(49);
+    expect(invocations).toHaveLength(
+      1 + corpusData.parseCases.length + corpusData.addCases.length,
+    );
     expect(new Set(invocations.map((invocation) => invocation.cwd)).size).toBe(
       1,
     );
