@@ -9,7 +9,7 @@ describe("CI workflow", () => {
       const workflow = await readFile(`.github/workflows/${filename}`, "utf8");
 
       expect(workflow).toContain(
-        "make -j2 NO_CURL=YesPlease NO_TCLTK=YesPlease",
+        "make -j2 git NO_CURL=YesPlease NO_TCLTK=YesPlease",
       );
     },
   );
