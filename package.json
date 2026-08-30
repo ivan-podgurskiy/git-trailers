@@ -1,6 +1,6 @@
 {
   "name": "git-trailers",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Parse, serialize, and manipulate Git commit message trailers in JavaScript and TypeScript.",
   "author": "Ivan Podgurskiy",
   "license": "MIT",

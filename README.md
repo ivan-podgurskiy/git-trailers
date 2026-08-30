@@ -102,9 +102,11 @@ Conventional Commits parser when that grammar is what your application needs.
 ## Folded Values
 
 Continuation lines that begin with a space or tab are folded values. Parsing
-defaults to `unfold: true`, which trims horizontal edge whitespace from each
-physical line and joins the value with a space. `raw` always keeps the exact
-source lines, including their original line endings.
+defaults to `unfold: true`, which replaces each LF and the following horizontal
+whitespace with one space, then trims the complete value's outer boundary. This
+matches Git's treatment of whitespace immediately before a fold and CRLF input.
+`raw` always keeps the exact source lines, including their original line
+endings.
 
 ```ts
 import { parseTrailers } from "git-trailers";
@@ -194,7 +196,8 @@ empty existing trailers and skips empty additions.
 When a mutation occurs, Git canonicalizes the affected trailer block with LF
 line endings. Bytes outside that block keep their original endings, so a CRLF
 message can intentionally contain a CRLF prefix followed by an LF trailer
-block. An empty addition list still returns the complete input byte-for-byte.
+block. An empty addition list returns the complete input byte-for-byte unless
+`trimEmpty: true` removes empty existing trailers.
 
 `AddOptions.separators` must be non-empty and cannot contain CR or LF. Every
 configured character is recognized in input, including SP and TAB, and the

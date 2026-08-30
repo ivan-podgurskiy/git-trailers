@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.1 - 2026-08-30
+
+- Match Git 2.54.0 when detecting orphan continuations across comments and
+  unfolding folded values with pre-newline whitespace or CRLF.
+- Preserve folded values during mutation, including internal whitespace, while
+  trimming only their outer boundary and comparing them without unfolding.
+- Apply `trimEmpty` to existing trailers even when no new trailers are added.
+- Expand pinned Git 2.54.0 differential coverage from 49 to 57 comparisons.
+
 ## 1.0.0 - 2026-08-21
 
 - Add Git 2.54.0-compatible parsing, formatting, serialization, and trailer
