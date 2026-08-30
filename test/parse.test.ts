@@ -45,6 +45,18 @@ describe("parseTrailers", () => {
     });
   });
 
+  it("preserves whitespace before a folded newline when unfolding", () => {
+    expect(parseTrailers("s\n\nKey: one   \n  two\n")).toMatchObject({
+      trailers: [{ key: "Key", value: "one    two" }],
+    });
+  });
+
+  it("preserves CR before a folded CRLF newline when unfolding", () => {
+    expect(parseTrailers("s\r\n\r\nKey: one   \r\n  two\r\n")).toMatchObject({
+      trailers: [{ key: "Key", value: "one   \r two" }],
+    });
+  });
+
   it("accepts a block at the built-in recognized-prefix 25 percent boundary", () => {
     expect(
       parseTrailers(
@@ -132,6 +144,15 @@ describe("parseTrailers", () => {
         { key: "Key", value: "one", raw: "Key: one\n" },
         { key: "Other", value: "two", raw: "Other: two\n" },
       ],
+    });
+  });
+
+  it("counts a pending orphan continuation when crossing a comment", () => {
+    expect(
+      parseTrailers("s\n\nKey: one\n# note\n  orphan\nOther: two\n"),
+    ).toMatchObject({
+      trailers: [],
+      blockStart: -1,
     });
   });
 

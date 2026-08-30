@@ -70,7 +70,10 @@ try {
     ),
   );
 
-  for (const testCase of corpus.parseCases) {
+  const parseCases = [...corpus.parseCases, ...supplementalParseCases()];
+  const addCases = [...corpus.addCases, ...supplementalAddCases()];
+
+  for (const testCase of parseCases) {
     const options = testCase.options ?? {};
     const result = library.parseTrailers(testCase.input, options);
     const expected = buildExpectedParseOutput(result, options);
@@ -82,7 +85,7 @@ try {
     compareGitOutput(`parse: ${testCase.name}`, args, testCase.input, expected);
   }
 
-  for (const testCase of corpus.addCases) {
+  for (const testCase of addCases) {
     const options = testCase.options ?? {};
     const expected = library.addTrailers(
       testCase.input,
@@ -108,7 +111,7 @@ try {
   }
 
   console.log(
-    `Git 2.54.0 differential checks passed (${corpus.parseCases.length} parse, ${corpus.addCases.length} add)`,
+    `Git 2.54.0 differential checks passed (${parseCases.length} parse, ${addCases.length} add)`,
   );
 } catch (error) {
   if (error instanceof DifferentialFailure) {
@@ -185,4 +188,52 @@ function safeGitEnvironment(homeDirectory, xdgConfigDirectory) {
   environment.XDG_CONFIG_HOME = xdgConfigDirectory;
   environment.GIT_CONFIG_NOSYSTEM = "1";
   return environment;
+}
+
+function supplementalParseCases() {
+  return [
+    {
+      name: "comment accounts for a pending orphan continuation",
+      input: "subject\n\nKey: one\n# note\n  orphan\nOther: two\n",
+    },
+    {
+      name: "unfold retains whitespace before the physical newline",
+      input: "subject\n\nKey: one   \n  two\n",
+    },
+    {
+      name: "unfold retains CR before a folded CRLF newline",
+      input: "subject\r\n\r\nKey: one   \r\n  two\r\n",
+    },
+  ];
+}
+
+function supplementalAddCases() {
+  return [
+    {
+      name: "folded existing value differs from unfolded input",
+      input: "subject\n\nKey: one\n  two\n",
+      trailers: [{ key: "Key", value: "one two" }],
+    },
+    {
+      name: "mutation preserves whitespace before a folded newline",
+      input: "subject\n\nKey: one   \n  two\n",
+      trailers: [{ key: "Other", value: "x" }],
+    },
+    {
+      name: "mutation trims the folded value's trailing boundary",
+      input: "subject\n\nKey: one\n  two   \n",
+      trailers: [{ key: "Other", value: "x" }],
+    },
+    {
+      name: "mutation trims the folded value's leading boundary",
+      input: "subject\n\nKey:    \n  two\n",
+      trailers: [{ key: "Other", value: "x" }],
+    },
+    {
+      name: "trim empty mutates without incoming trailers",
+      input: "subject\n\nFixes:   \nReviewed-by: A\n",
+      trailers: [],
+      options: { trimEmpty: true },
+    },
+  ];
 }

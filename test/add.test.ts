@@ -56,6 +56,24 @@ describe("addTrailers", () => {
     );
   });
 
+  it.each([
+    ["start", "subject\n\nKey: one two\nKey: one\n  two\n"],
+    ["before", "subject\n\nKey: one two\nKey: one\n  two\n"],
+    ["after", "subject\n\nKey: one\n  two\nKey: one two\n"],
+    ["end", "subject\n\nKey: one\n  two\nKey: one two\n"],
+  ] as const)(
+    "keeps a folded existing value distinct at %s placement",
+    (where, expected) => {
+      expect(
+        addTrailers(
+          "subject\n\nKey: one\n  two\n",
+          [{ key: "Key", value: "one two" }],
+          { where },
+        ),
+      ).toBe(expected);
+    },
+  );
+
   it("suppresses a case-insensitive existing key and value", () => {
     expect(
       addTrailers(base, [{ key: "fixes", value: "ONE" }], {
@@ -101,6 +119,14 @@ describe("addTrailers", () => {
         [{ key: "Acked-by", value: " \t " }],
         { trimEmpty: true },
       ),
+    ).toBe("subject\n\nReviewed-by: A\n");
+  });
+
+  it("trims existing empty trailers without incoming trailers", () => {
+    expect(
+      addTrailers("subject\n\nFixes:   \nReviewed-by: A\n", [], {
+        trimEmpty: true,
+      }),
     ).toBe("subject\n\nReviewed-by: A\n");
   });
 
@@ -241,13 +267,13 @@ describe("addTrailers", () => {
     ).toBe("subject\n\nKey: value\n\nReviewed-byK A\n");
   });
 
-  it("recognizes a folded overlapping-separator trailer without appending a block", () => {
+  it("keeps a folded overlapping-separator value distinct", () => {
     const message = "subject\n\nFixes- one\n  continued\n";
     expect(
       addTrailers(message, [{ key: "Fixes", value: "one continued" }], {
         separators: "-:",
       }),
-    ).toBe(message);
+    ).toBe(`${message}Fixes- one continued\n`);
   });
 
   it("rejects an orphan continuation from an overlapping-separator fallback block", () => {
@@ -269,6 +295,27 @@ describe("addTrailers", () => {
     ).toBe(
       "subject\n\nSigned-off-by: A\n  folded value\nnot trailer\nReviewed-by: B\n",
     );
+  });
+
+  it("preserves whitespace immediately before a folded newline", () => {
+    const message = "subject\n\nKey: one   \n  two\n";
+    expect(addTrailers(message, [{ key: "Other", value: "x" }])).toBe(
+      `${message}Other: x\n`,
+    );
+  });
+
+  it("trims only the complete folded value's outer whitespace", () => {
+    expect(
+      addTrailers("subject\n\nKey: one\n  two   \n", [
+        { key: "Other", value: "x" },
+      ]),
+    ).toBe("subject\n\nKey: one\n  two\nOther: x\n");
+
+    expect(
+      addTrailers("subject\n\nKey:    \n  two\n", [
+        { key: "Other", value: "x" },
+      ]),
+    ).toBe("subject\n\nKey: two\nOther: x\n");
   });
 
   it("inserts before a trailing ignored blank and comment suffix", () => {

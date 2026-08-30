@@ -47,10 +47,10 @@ test("differential Git subprocesses ignore ambient Git state and use a fresh dir
         const corpus = JSON.parse(readFileSync(new URL("../test/fixtures/conformance.json", import.meta.url), "utf8"));
         const optionsMatch = (left, right) => JSON.stringify(left ?? {}) === JSON.stringify(right ?? {});
         export function parseTrailers(input, options) {
-          return corpus.parseCases.find((item) => item.input === input && optionsMatch(item.options, options)).expected;
+          return corpus.parseCases.find((item) => item.input === input && optionsMatch(item.options, options))?.expected ?? { trailers: [] };
         }
         export function addTrailers(input, trailers, options) {
-          return corpus.addCases.find((item) => item.input === input && optionsMatch(item.options, options)).expected;
+          return corpus.addCases.find((item) => item.input === input && optionsMatch(item.options, options))?.expected ?? input;
         }
       `,
     );
@@ -104,7 +104,7 @@ test("differential Git subprocesses ignore ambient Git state and use a fresh dir
       .split("\n")
       .map((line) => JSON.parse(line));
     expect(invocations).toHaveLength(
-      1 + corpusData.parseCases.length + corpusData.addCases.length,
+      1 + corpusData.parseCases.length + corpusData.addCases.length + 8,
     );
     expect(new Set(invocations.map((invocation) => invocation.cwd)).size).toBe(
       1,

@@ -161,7 +161,11 @@ function findTrailerBlockStart(
       return accepted ? start : -1;
     }
 
-    if (isComment(line.content)) continue;
+    if (isComment(line.content)) {
+      nonTrailerLines += possibleContinuationLines;
+      possibleContinuationLines = 0;
+      continue;
+    }
 
     if (isRecognizedPrefix(line.content)) {
       trailerLines += 1;
@@ -237,10 +241,11 @@ function normalizeValue(
 ): string {
   const first = lines[0]!.content.slice(separator + 1);
   if (unfold) {
-    return [first, ...lines.slice(1).map((line) => line.content)]
-      .map(trimHorizontal)
-      .join(" ")
-      .replace(/^[ \t]+|[ \t]+$/g, "");
+    let value = first;
+    for (let index = 1; index < lines.length; index += 1) {
+      value += `${lines[index - 1]!.eol}${lines[index]!.content}`;
+    }
+    return value.replace(/\n[ \t\r]*/g, " ").trim();
   }
 
   let value = first;

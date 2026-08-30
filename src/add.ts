@@ -60,7 +60,7 @@ export function addTrailers(
   if (!Array.isArray(trailers))
     throw new TypeError("trailers must be an array");
   const normalized = normalizeOptions(options);
-  if (trailers.length === 0) return message;
+  if (trailers.length === 0 && !normalized.trimEmpty) return message;
 
   const incoming = trailers.map(validateTrailer);
   const lines = scanLines(message);
@@ -314,15 +314,15 @@ function parseBlockItems(
       index += 1;
       continuations.push(lines[index]!.content);
     }
+    const sourceValue = line.content.slice(trailer.separatorIndex + 1);
+    const value = [sourceValue, ...continuations].join("\n").trim();
+    const [firstValue = "", ...trimmedContinuations] = value.split("\n");
     items.push({
       kind: "trailer",
       key: trailer.key,
-      value: [trailer.value, ...continuations]
-        .map(trimHorizontal)
-        .join(" ")
-        .trim(),
-      firstValue: trailer.value,
-      continuations,
+      value,
+      firstValue,
+      continuations: trimmedContinuations,
     });
   }
   return items;
@@ -443,8 +443,4 @@ function lastLineBefore(
 
 function isBlank(line: string): boolean {
   return /^[ \t]*$/.test(line);
-}
-
-function trimHorizontal(value: string): string {
-  return value.replace(/^[ \t]+|[ \t]+$/g, "");
 }
